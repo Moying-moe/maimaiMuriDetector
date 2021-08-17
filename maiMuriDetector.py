@@ -104,7 +104,6 @@ class MaiMuriDetector:
             'type': int # 操作类型 0-单次 1-占用 2-解除
         }
         """
-        # TODO: 双手拍滑错位检测
         epsRound = lambda x: round(x, eps)
 
         errorCnt = 0
@@ -172,7 +171,8 @@ class MaiMuriDetector:
                     )
 
         # 按照时间顺序正向排序
-        opSequence.sort(key=lambda x: (x["time"], (1, 2, 0)[x["type"]]))
+        # opSequence.sort(key=lambda x: (x["time"], (1, 2, 0)[x["type"]]))
+        opSequence.sort(key=lambda x: (x["time"], x["type"]))
         signal = 2  # 2个资源（信号量）
         for op in opSequence:
             if op["type"] == 0:
@@ -312,7 +312,7 @@ class MaiMuriDetector:
                     if e["area"] == op["area"] and op["time"] - judgementLength < e["time"] < op["time"]:
                         # 无理
                         print(
-                            f"""[撞尾无理] {e['position'][1]+1}行的"{e['noteContent']}"可能会撞上 {op['position'][1]}行的"{op['noteContent']}\""""
+                            f"""[撞尾无理] {e['position'][1]+1}行的"{e['noteContent']}"可能会撞上 {op['position'][1]+1}行的"{op['noteContent']}\""""
                         )
                         errorCnt += 1
 
