@@ -2,10 +2,35 @@
 Author: moying
 Date: 2021-08-17 01:37:37
 LastEditTime: 2021-08-17 01:59:33
-LastEditors: Please set LastEditors
-Description: In User Settings Edit
+LastEditors: moying
+Description: 所有slide经过A区的时间比例数据文件
 FilePath: \maimai无理检测\slide_time.py
 """
+
+'''
+所有类型的slide, 在启动后经过A区的情况和时间. 但不包括起始位置的A区
+如1-5经过A1和A5, 但A1不会被此文件记录.
+以下数据均通过MajdataView手动测定, 不代表官方数据
+
+SLIDE_TIME  Dict<Dict<List<Dict>>>
+= {
+    "<slide_type>": {
+        <relative_slide_end> : [
+            {
+                "area": <A_area_pass_by>,
+                "time": <time_ratio>
+            }
+        ]
+    }
+}
+
+@keys   slide_type: str             slide的类型 可以是: - v p q s z w pp qq V ^ > <
+@keys   relative_slide_end: int     slide的相对终点 若起点是x 则终点是x + relative_slide_end
+                                        例子: slide类型为- 起点为5时 relative_slide_end=4 则星星为5-1
+@values A_area_pass_by: int         slide经过的A区编号 编号也是基于起点的相对值
+@values time_ratio: float           slide经过对应A区时的时间 是相对于note.slideLength的时间比例
+'''
+
 SLIDE_TIME = {
     "-": {
         2: [{"area": 2, "time": 0.7678}],
@@ -246,19 +271,3 @@ SLIDE_TIME = {
         ],
     },
 }
-
-'''
-
-def rev(k):
-    return {0: 0, 1: 7, 2: 6, 3: 5, 4: 4, 5: 3, 6: 2, 7: 1}[k]
-
-
-SLIDE_TIME["<"] = {}
-for k in SLIDE_TIME[">"]:
-    SLIDE_TIME["<"][rev(k)] = []
-    for o in SLIDE_TIME[">"][k]:
-        to = o.copy()
-        to["area"] = rev(to["area"])
-        SLIDE_TIME["<"][rev(k)].append(to)
-print(SLIDE_TIME)
-'''
