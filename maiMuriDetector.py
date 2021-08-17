@@ -342,9 +342,9 @@ note designed by {self.infos['designer']}
         print()
 
         if multNoteDetectEnable:
-            print(f"检查完毕，共发现{multNoteErrorCnt}个多押无理错误，{slideErrorCnt}个撞尾无理配置")
+            print(f"检查完毕，共发现{multNoteErrorCnt}个多押无理错误，{slideErrorCnt}个撞尾无理错误")
         else:
-            print(f"检查完毕，共发现{slideErrorCnt}个撞尾无理配置")
+            print(f"检查完毕，共发现{slideErrorCnt}个撞尾无理错误")
         print("\n>>>maimaiMuriDetector提供的警告与建议并不一定完全准确，结果仅供参考<<<")
 
 
@@ -373,23 +373,21 @@ maimaiMuriDetector [-h] [-i] [-c] [-m [-s]] [filepath]
 -h --help               显示本帮助信息
 -i --interactive        适合电脑苦手的方式 通过交互式的命令菜单来使用maimaiMuriDetector
 -c --command-line       适合电脑老手的方式 通过命令行来使用maimaiMuriDetector
-                            有时可以忽略这个选项 具体情况见下文
+                            既不传入-i 也不传入-c时 默认工作在命令行模式下
 -m --mult-note-detection
                         指定是否开启多押无理检测 默认为开 传入f/0/false可禁用多押无理检测
                             如果您的谱面是协宴 或存在多押的宴谱 建议您关闭多押无理检测
-                            使用本选项时 -c可以忽略
 -s --slide-detection-accuracy
                         设置撞尾检测的时长 默认为150(good的判定区间) 单位为毫秒 该设置不建议低于默认值
                             如果您希望更严格的检测撞尾无理 可以适当提高该设置
-                            使用本选项时 -c可以忽略
 filepath                指定需要检测的majdata.json路径 使用-c选项时 必须输入此参数
                             如果您的路径中含有空格 请您用半角引号(英文引号)将路径括起 或者您也可以直接将文件拖拽至shell窗口中自动生成路径
 
 ·如何获得majdata.json：
-    使用MajdataEdit打开您的谱面文件，切换到需要检测的难度，单击“发送到查看器”。此时MajdataEdit会在您的谱面文件夹中生成majdata.json
+    使用MajdataEdit打开您的谱面文件，切换到需要检测的难度，单击播放或“录制模式”。此时MajdataEdit会在您的谱面文件夹中生成majdata.json
     请注意：
         majdata.json中只能存放一个难度的谱面信息。
-        举例来说：如果您查看过MASTER谱面之后，又切换到EXPERT难度并点击了“发送到查看器”，那么谱面文件夹中的majdata.json中的内容就会变为EXPERT谱面的信息。这一点请您一定要多加注意
+        举例来说：如果您查看过MASTER谱面之后，又切换到EXPERT难度并点击播放或“录制模式”，那么谱面文件夹中的majdata.json中的内容就会变为EXPERT谱面的信息。这一点请您一定要多加注意
 
 命令示例：
 maimaiMuriDetector -h
