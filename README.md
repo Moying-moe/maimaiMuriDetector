@@ -1,7 +1,7 @@
 <!--
  * @Author: moying
  * @Date: 2021-08-17 14:58:21
- * @LastEditTime: 2021-08-17 16:39:13
+ * @LastEditTime: 2021-08-17 17:55:58
  * @LastEditors: Please set LastEditors
  * @Description: 自述文件
  * @FilePath: \maimaiMuriDetector\README.md
@@ -46,6 +46,14 @@ a maimai beatmap muri notes detector
 maimaiMuriDetector检测多押时，会**始终尝试正攻slide**。换言之，在一个较慢的slide**正在滑动**时，出现一对**双押**是**不被允许的**，**即便玩家实际操作时不会用手始终跟随slide滑动。**
 
 如果您的谱面是协力宴谱，或允许出现多押的宴谱，您也可以在使用时禁用多押检测。
+
+> 以下几种情况在官方谱面中被认为可正攻，但可能会被maimaiMuriDetector认为是多押：
+>
+> 回旋类的slide(`^ > <`)有部分重合，以此情况写出的一笔画(如felys -final remix-)
+>
+> ![felys](./readme_images/p2.png)
+>
+> 部分或完全重合的slide，如believe the rainbow的边框slide(部分重合)、altale最后一个slide(完全重合)等
 
 ### 撞尾
 
@@ -97,7 +105,9 @@ maimaiMuriDetector需要您输入谱面文件中`majdata.json`的路径。
 您可以复制这个文件的完整路径，或者在需要输入文件路径时，**直接将文件拖拽至命令行窗口**，**绝大部分**命令行窗口都会自动识别并输入文件的路径。
 
 > `Majdata`由`MajdataEdit`和`MajdataView`组成，是由国人开发者完成的新一代maimai制谱器、看谱器，也是simai的有力替代产品。现在由bbben和多名爱好者共同开发完善。
+>
 > `MajdataEdit`相比于过去的记事本或notepad++制谱，不仅可以提供音频可视化、小节线提醒、note可视化以外，还有迅速定位note在文本中的位置，快速翻转某一段note等实用的功能。
+>
 > `MajdataView`是新一代maimai看谱器，是目前最接近本家视觉效果的看谱器。软件使用unity开发，无需配置复杂的环境，开箱即用。可与MajdataEdit端联动，实现暂停、回放功能，易于调试和使用。
 
 之后，maimaiMuriDetector会询问您关于**多押检测**和**撞尾检测精度**的设置。

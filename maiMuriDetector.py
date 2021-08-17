@@ -89,29 +89,47 @@ class MaiMuriDetector:
     def multNoteDetect(self, eps=5):
         """
         @params eps:float       操作时间结算的精度 单位为小数点后位
-        根据原先操作序列生成操作表
-        操作表有3种操作信号：单次操作、占用操作、解除占用操作
-        在开始时，操作资源为2（也即两只手），占用操作会使资源-1，解除占用则会+1
-        以下情况出现时，会给出多押警告：
-        1、单次操作时，资源<=0
-        2、占用操作时，资源<=0（此时会临时变为负数）
+        根据原先操作序列生成操作序列
+        tap会生成一个开始时间和结束时间相同的操作
+        hold会生成一个开始时间和结束时间不同的操作
+        slide会生成一个tap和一个开始时间和结束时间不同的操作
 
-        同一瞬间，操作按照占用、单次、解除 排序
+        同时 每个操作还会记录这次操作的开始位置和结束位置
+        tap和hold的开始位置和结束位置都相同
+        slide的开始位置和结束位置可能不同
+        这个位置是用于处理一笔画、拍滑等问题的
+
+        生成操作序列后 按照开始时间正向排序
+        如果时间相同 则按照tap, hold, slide的顺序排序
+
+        遍历操作序列 同时维护一个列表 存储“正在操作”的行为
+        每次循环:
+            维护列表 删除所有结束时间小于当前时间的行为 时间相等的行为不删除
+            如果当前读取的操作时tap操作 则遍历“正在操作”的行为 如果有时间相同且startArea相同的行为 则删除它
+            如果当前读取的操作是slide操作 则遍历“正在操作”的行为 找出结束时间与当前时间相同的行为:
+                如果这个行为的结束位置 和 当前行为的开始位置相等 则删除这个行为（即这个行为和当前行为合并了）
+            将当前操作加入列表中
+            检查列表的大小 若大于2则报错并输出错误信息
 
         opSequence  List<Dict>
         {
-            'time': float # 操作时间
-            'type': int # 操作类型 0-单次 1-占用 2-解除
+            'startTime': float,
+            'endTime': float,
+            'startArea': int,
+            'endArea': int,
+            'type': int, # 0-tap 1-slide-tap 2-hold 3-slide
+            'noteContent': str,
+            'position': tuple<int, int>
         }
         """
         epsRound = lambda x: round(x, eps)
+        prog = re.compile(r"(\d)(.+?)(\d{1,2})\[\d+?\:\d+?\]")
 
         errorCnt = 0
 
         opSequence = []
         for noteGroup in self.data:
             baseTime = noteGroup["time"]  # 这一组note的时间
-            noteContent = noteGroup["notesContent"]
             position = noteGroup["rawTextPositionX"], noteGroup["rawTextPositionY"]
 
             for note in noteGroup["noteList"]:
@@ -119,73 +137,90 @@ class MaiMuriDetector:
                     # tap
                     opSequence.append(
                         {
-                            "time": epsRound(baseTime),
+                            "startTime": epsRound(baseTime),
+                            "endTime": epsRound(baseTime),
+                            "startArea": note["startPosition"],
+                            "endArea": note["startPosition"],
                             "type": 0,
-                            "noteContent": noteContent,
+                            "noteContent": note["noteContent"],
                             "position": position,
                         }
                     )
                 elif note["noteType"] == 1:
                     # slide
+                    # slide-tap 星星头
                     opSequence.append(
                         {
-                            "time": epsRound(baseTime),
-                            "type": 0,
-                            "noteContent": noteContent,
-                            "position": position,
-                        }
-                    )  # slide-tap
-                    opSequence.append(
-                        {
-                            "time": epsRound(note["slideStartTime"]),
+                            "startTime": epsRound(baseTime),
+                            "endTime": epsRound(baseTime),
+                            "startArea": note["startPosition"],
+                            "endArea": note["startPosition"],
                             "type": 1,
-                            "noteContent": noteContent,
+                            "noteContent": note["noteContent"],
                             "position": position,
                         }
-                    )  # slide-track-start
+                    )
+                    try:
+                        temp = prog.match(note["noteContent"])
+                        endPosition = int(temp.group(3)[-1])
+                    except:
+                        print(f"[语法错误] \"{note['noteContent']}\"({position[1]+1}L,{position[0]+1}C)解析失败，可能存在语法错误")
+                        continue
                     opSequence.append(
                         {
-                            "time": epsRound(note["slideStartTime"]) + epsRound(note["slideTime"]),
-                            "type": 2,
-                            "noteContent": noteContent,
+                            "startTime": epsRound(note["slideStartTime"]),
+                            "endTime": epsRound(note["slideStartTime"] + note["slideTime"]),
+                            "startArea": note["startPosition"],
+                            "endArea": endPosition,
+                            "type": 3,
+                            "noteContent": note["noteContent"],
                             "position": position,
                         }
-                    )  # slide-track-end
+                    )
                 elif note["noteType"] == 2:
                     # hold
                     opSequence.append(
                         {
-                            "time": epsRound(baseTime),
-                            "type": 1,
-                            "noteContent": noteContent,
-                            "position": position,
-                        }
-                    )
-                    opSequence.append(
-                        {
-                            "time": epsRound(baseTime) + (note["holdTime"]),
+                            "startTime": epsRound(baseTime),
+                            "endTime": epsRound(baseTime + note["holdTime"]),
+                            "startArea": note["startPosition"],
+                            "endArea": note["startPosition"],
                             "type": 2,
-                            "noteContent": noteContent,
+                            "noteContent": note["noteContent"],
                             "position": position,
                         }
                     )
 
-        # 按照时间顺序正向排序
-        # opSequence.sort(key=lambda x: (x["time"], (1, 2, 0)[x["type"]]))
-        opSequence.sort(key=lambda x: (x["time"], x["type"]))
-        signal = 2  # 2个资源（信号量）
+        # 按照(时间,类型)顺序正向排序
+        opSequence.sort(key=lambda x: (x["startTime"], x["type"]))
+        inHandling = []
         for op in opSequence:
-            if op["type"] == 0:
-                if signal <= 0:
-                    print(f"""[多押无理] {op['position'][1]+1}行的"{op['noteContent']}"可能出现了多押""")
-                    errorCnt += 1
-            elif op["type"] == 1:
-                if signal <= 0:
-                    print(f"""[多押无理] {op['position'][1]+1}行的"{op['noteContent']}"可能出现了多押""")
-                    errorCnt += 1
-                signal -= 1
-            elif op["type"] == 2:
-                signal += 1
+            removeListCondition(inHandling, lambda x: x["endTime"] < op["startTime"])  # 删除结束时间小于当前时间的
+
+            if op["type"] == 3:
+                # 如果是slide 就要考虑是否会有拍滑、hold滑、一笔画 若有 则需要合并这些操作
+                removeListCondition(
+                    inHandling, lambda x: x["endTime"] == op["startTime"] and x["endArea"] == op["startArea"]
+                )
+            if op["type"] == 1:
+                # 如果是slide-tap 就要考虑是不是有重合星星起点
+                removeListCondition(
+                    inHandling,
+                    lambda x: x["type"] == 1
+                    and x["startTime"] == op["startTime"]
+                    and x["startArea"] == op["startArea"],
+                )
+            inHandling.append(op.copy())
+
+            if len(inHandling) > 2:
+                # 多押
+                print(f"[多押无理] ", end="")
+                for e in inHandling:
+                    if e['type'] == 1:
+                        print('*', end='')
+                    print(f"\"{e['noteContent']}\"({e['position'][1]+1}L,{e['position'][0]+1}C) ", end="")
+                print(f"可能形成了{len(inHandling)}押")
+                errorCnt += 1
 
         return errorCnt
 
@@ -241,7 +276,7 @@ class MaiMuriDetector:
                         sType = slideInfos.group(2)
                         sEnd = slideInfos.group(3)
                     except:
-                        print(f"[语法错误] {position[1]+1}行的\"{note['noteContent']}\"解析失败，可能存在语法错误")
+                        print(f"[语法错误] \"{note['noteContent']}\"({position[1]+1}L,{position[0]+1}C)解析失败，可能存在语法错误")
                         continue
                     # 处理转折型（aVbc）特殊情况
                     if sType == "V":
@@ -272,11 +307,10 @@ class MaiMuriDetector:
                     try:
                         sTimeInfo = SLIDE_TIME[sType][sEnd]
                     except:
-                        print(f"[语法错误] {position[1]+1}行的\"{note['noteContent']}\"解析失败，可能存在语法错误")
+                        print(f"[语法错误] \"{note['noteContent']}\"({position[1]+1}L,{position[0]+1}C)解析失败，可能存在语法错误")
                         continue
 
                     for each in sTimeInfo:
-                        # print(note["noteContent"], sStart, sType, sEnd, notePos(each["area"] + sStart, False))
                         opSequence.append(
                             {
                                 "time": each["time"] * note["slideTime"] + note["slideStartTime"],
@@ -312,7 +346,8 @@ class MaiMuriDetector:
                     if e["area"] == op["area"] and op["time"] - judgementLength < e["time"] < op["time"]:
                         # 无理
                         print(
-                            f"""[撞尾无理] {e['position'][1]+1}行的"{e['noteContent']}"可能会撞上 {op['position'][1]+1}行的"{op['noteContent']}\""""
+                            f"""[撞尾无理] "{e['noteContent']}"({e['position'][1]+1}L,{e['position'][0]+1}C)可能会撞上 \
+"{op['noteContent']}\"({op['position'][1]+1}L,{op['position'][0]+1}C) 二者间隔{int((op['time']-e['time'])*1000)}ms"""
                         )
                         errorCnt += 1
 
@@ -407,68 +442,70 @@ maimaiMuriDetector majdata.json"""
 
         if getOptByName(opts, ("-c", "--command-line")) is not None:
             if interactive:
-                print('错误的选项: 同时使用了-i和-c选项')
+                print("错误的选项: 同时使用了-i和-c选项")
                 sys.exit(1)
             interactive = False
 
         multNoteDetection = getOptByName(opts, ("-m", "--mult-note-detection"))
         if multNoteDetection is not None:
             if interactive:
-                print('错误的选项: 同时使用了-i和-m选项')
+                print("错误的选项: 同时使用了-i和-m选项")
                 sys.exit(1)
             interactive = False
-            multNoteDetection = (False if multNoteDetection in ('f','0','false') else True)
+            multNoteDetection = False if multNoteDetection in ("f", "0", "false") else True
         else:
             multNoteDetection = True
-        
-        slideDetectionAccuracy = getOptByName(opts, ('-s', '--slide-detection-accuracy'))
+
+        slideDetectionAccuracy = getOptByName(opts, ("-s", "--slide-detection-accuracy"))
         if slideDetectionAccuracy is not None:
             if interactive:
-                print('错误的选项: 同时使用了-i和-s选项')
+                print("错误的选项: 同时使用了-i和-s选项")
                 sys.exit(1)
             interactive = False
             try:
-                slideDetectionAccuracy = int(slideDetectionAccuracy)/1000
+                slideDetectionAccuracy = int(slideDetectionAccuracy) / 1000
             except:
-                print('错误的参数: -s的值必须是一个整数')
+                print("错误的参数: -s的值必须是一个整数")
                 sys.exit(2)
         else:
             slideDetectionAccuracy = 0.15
-        
+
         if not interactive:
             if len(args) == 0:
-                print('错误的参数: 使用命令行模式 但没有给出filepath')
+                print("错误的参数: 使用命令行模式 但没有给出filepath")
                 sys.exit(2)
             if len(args) != 1:
-                print('错误的参数: 给出了多个filepath 或有参数输入有误')
+                print("错误的参数: 给出了多个filepath 或有参数输入有误")
                 sys.exit(2)
             if not os.path.exists(args[0]):
-                print('错误的参数: 给出的filepath不存在')
+                print("错误的参数: 给出的filepath不存在")
                 sys.exit(2)
-        
+
         if interactive:
             # 交互模式
-            filepath = input('请输入majdata.json的路径(也可将文件拖拽至该窗口):')
+            filepath = input("请输入majdata.json的路径(也可将文件拖拽至该窗口):")
             if not os.path.exists(filepath):
-                print('majdata.json路径错误 请检查输入并重试')
+                print("majdata.json路径错误 请检查输入并重试")
                 sys.exit(2)
-            
-            multNoteDetection = input('是否开启多押无理检测\n\t如果您的谱面是协宴或允许多押的宴谱 您可以禁用多押检测\n\t(y/n 默认y):') != 'n'
-            slideDetectionAccuracy = input('撞尾检测精度\n\t单位ms 默认值150\n\t默认值是最低限度的撞尾检测 如果您想加大检测力度 可以适当提高此值\n\t(直接输入回车或输入非数字视为使用默认值):')
+
+            multNoteDetection = input("是否开启多押无理检测\n\t如果您的谱面是协宴或允许多押的宴谱 您可以禁用多押检测\n\t(y/n 默认y):") != "n"
+            slideDetectionAccuracy = input(
+                "撞尾检测精度\n\t单位ms 默认值150\n\t默认值是最低限度的撞尾检测 如果您想加大检测力度 可以适当提高此值\n\t(直接输入回车或输入非数字视为使用默认值):"
+            )
             try:
-                slideDetectionAccuracy = int(slideDetectionAccuracy)/1000
+                slideDetectionAccuracy = int(slideDetectionAccuracy) / 1000
             except:
                 slideDetectionAccuracy = 0.15
-            print('\n\n')
+            print("\n\n")
             mmd = MaiMuriDetector(filepath)
             mmd.detectMuri(multNoteDetection, slideDetectionAccuracy)
         else:
             # 命令行模式
             mmd = MaiMuriDetector(args[0])
             mmd.detectMuri(multNoteDetection, slideDetectionAccuracy)
-        
+
         try:
             # 因为不知道是什么平台的，总之尝试pause一下，如果是linux的大概率是在shell里运行的，不pause也无所谓
-            os.system('pause')
+            os.system("pause")
         except:
             pass
