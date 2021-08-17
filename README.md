@@ -1,7 +1,7 @@
 <!--
  * @Author: moying
  * @Date: 2021-08-17 14:58:21
- * @LastEditTime: 2021-08-17 16:34:19
+ * @LastEditTime: 2021-08-17 16:39:13
  * @LastEditors: Please set LastEditors
  * @Description: 自述文件
  * @FilePath: \maimaiMuriDetector\README.md
@@ -148,6 +148,7 @@ MASTER lv.14
 ```shell
  $ python maiMuriDetector.py -c -s 200 ./majdata.json
  $ python maiMuriDetector.py -c --slide-detection-accuracy=false ./majdata.json
+// 长短选项格式均可
 ```
 
 另外，您也可以省略`-c`选项，**maimaiMuriDetector默认工作在命令行模式下**。
