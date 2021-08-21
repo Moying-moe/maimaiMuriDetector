@@ -10,7 +10,7 @@
 
 ## 简介
 
-一个maimai谱面无理配置检测器
+一个maimai谱面无理配置检测器，目前已集成至[MajdataEdit](https://github.com/LingFeng-bbben/MajdataEdit)
 
 a maimai beatmap muri notes detector
 
@@ -67,7 +67,9 @@ maimaiMuriDetector检测撞尾时，会**始终正攻slide**。换言之，maima
 
 ## 使用
 
-需要python 3.6以上运行环境。未来会集成在[MajdataEdit](https://github.com/LingFeng-bbben/MajdataEdit)中。
+目前该功能已集成至[MajdataEdit](https://github.com/LingFeng-bbben/MajdataEdit)，您可以直接下载Majdata组合，并在MajdataEdit中的 菜单栏 -> 工具 -> 谱面无理检测中使用本功能。
+
+如果您想直接使用本脚本，则需要python 3.6以上运行环境。
 
 `maiMuriDetector.py`是核心文件，您可以直接使用，也可以作为模块调用。
 
